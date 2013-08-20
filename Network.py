@@ -10,9 +10,23 @@ import theano.tensor as T
 
 class Layer(object):
 	'''Based on the feedforward net from Theano docs '''
-	def __init__(self, rng, inputVec, n_in, n_out, W=None, b=None,
+	def __init__(self, rng, inputFunction, n_in, n_out, W=None, b=None,
 				 activation=T.tanh):
-		self.input = input
+		"""
+		Initialize the parameters for the layer
+	
+	    Keyword arguments:
+	    rng -- the random number generator (for unspecified parameters)
+	    inputFunction -- function applied to the input. If this is the 
+	    first layer, it should be the identity. If this is layer i, should
+	    be the output of layer i-1
+	    n_in -- dim of input vector
+	    n_out -- dim of output vector
+	    W -- weight matrix
+	    b -- bias matrix
+	    activation -- activation function
+	    """
+		self.inputFunction = inputFunction
 		if W is None:
 			W_values = np.asarray(rng.uniform(
 					low=-np.sqrt(6. / (n_in + n_out)),
@@ -29,25 +43,25 @@ class Layer(object):
 
 		self.W = W
 		self.b = b
+		self.activation = activation
 
-		lin_output = T.dot(inputVec, self.W) + self.b
-		self.output = (lin_output if activation is None
-					   else activation(lin_output))
 		# parameters of the model
 		self.params = [self.W, self.b]
 		
-	def cost(self, target):
-		return ((self.output - target)**2).sum()
+	def run(self, inputVec):
+		lin_output = T.dot(self.inputFunction(inputVec), self.W) + self.b
+		return (lin_output if self.activation is None
+					   else self.activation(lin_output))
 		
 class Network(object):
-	def __init__(self, rng, structure, inputSize, inputVec):
+	def __init__(self, rng, structure, inputSize):
 		self.layers = []
 		
 		for i,_ in enumerate(structure):
 			if i == 0:
-				layer = Layer(rng, inputVec, inputSize, structure[i])
+				layer = Layer(rng, lambda x: x,          inputSize,      structure[i])
 			else:
-				layer = Layer(rng, self.layers[i-1].output, structure[i-1], structure[i])
+				layer = Layer(rng, self.layers[i-1].run, structure[i-1], structure[i])
 			self.layers.append(layer)
 		
 		self.params = []
@@ -59,25 +73,15 @@ class Network(object):
 			self.L1 += abs(l.W).sum()
 			self.L2_sqr += (l.W ** 2).sum()
 		
-		self.input = inputVec
-		#self.output = self.layers[-1].output
-		self.output = theano.printing.Print('no')(self.layers[-1].output)
-	
-	def outputCost(self, target):
-		return self.layers[-1].cost(target)
-	
-	def setInput(self, inputVec):
-		self.input.set_value(inputVec)
+	def run(self, inputVec):
+		return self.layers[-1].run(inputVec)
 	
 if __name__ == '__main__':
 	rng = np.random.RandomState(1234)
-	x = theano.shared(np.ones(5))
-	n = Network(rng, [8,2], 5, x)
-	f = theano.function([], n.output)
+	x = T.fvector('x')
+	x0 = theano.shared(np.ones(5, dtype='float32'))
+	n = Network(rng, [8,2], 5)
+	f = theano.function([], n.run(x), givens={x:x0})
 	print f()
-	n.setInput(np.array([1,2,3,4,5]))
+	x0.set_value(np.array([1,2,3,4,5], dtype='float32'))
 	print f()
-	target = theano.shared(np.ones(2))
-	oc = n.outputCost(target)
-	h = theano.function([], oc)
-	print h()
