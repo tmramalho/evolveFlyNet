@@ -9,11 +9,20 @@ import re
 
 class DataProcessor(object):
 	'''
-	classdocs
+	Reads the experimental files in the data folder and places them in
+	a numpy array coreData. The array core data has five dimensions,
+	organized in the following way:
+	
+	0 -- Temporal class [1-8]
+	1 -- Measured gene ['bcd', 'cad', 'tll', 'gt', 'hb', 'kni', 'kr', 'eve']
+	2 -- Experiment type [wt, dmtll]
+	3 -- AP axis position [0 - 99]
+	4 -- Measurement type [position, av. concentration, std. dev. of concentration]
 	'''
 	def __init__(self, folder = '/Users/tiago/Dropbox/workspace/evolveFlyNet/', force = False):
 		'''
-		Constructor
+		If we have a copy of the data array in numpy format, load that file
+		Else create the data array from files
 		'''
 		if force:
 			self.createDataFile(folder)
@@ -24,6 +33,10 @@ class DataProcessor(object):
 				self.createDataFile(folder)
 			
 	def createDataFile(self, folder):
+		'''
+		Loop over the relevant dimensions, and read the data from
+		the corresponding file. Merge the data into the coreData array
+		'''
 		print "Reading data from experiment files..."
 		self.pattern = re.compile('([-\d\.]+?) +?([-\d\.]+?) +?([-\d\.]+?) +?([-\d\.]+?)\n')
 		genes = ['bcd', 'cad', 'tll', 'gt', 'hb', 'kni', 'kr', 'eve']
@@ -39,6 +52,9 @@ class DataProcessor(object):
 		np.save(folder+"data/npData.npy", self.coreData)
 			
 	def consumeFile(self, fname):
+		'''
+		Extract the data from an individual file
+		'''
 		try:
 			with open(fname) as f:
 				data = []
@@ -52,3 +68,17 @@ class DataProcessor(object):
 				return data
 		except IOError:
 			return np.zeros((100,3))
+	
+	def sequencesPerCell(self):
+		'''
+		Return a rearranged data array, with less dimensions. Only average
+		concentrations are selected, and the experiment type dimension
+		is flattened. The remaining dimensions are:
+		
+		0 -- AP axis position [0 - 99 (twice)]
+		1 -- Temporal class [1-8]
+		2 -- Measured gene ['bcd', 'cad', 'tll', 'gt', 'hb', 'kni', 'kr', 'eve']
+		'''
+		tr = np.transpose(self.coreData, axes=(2, 3, 0, 1, 4))
+		res = tr[:,:,:,:,1].flatten().reshape((200,8,8))
+		return res

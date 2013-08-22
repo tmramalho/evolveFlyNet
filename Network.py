@@ -15,17 +15,17 @@ class Layer(object):
 		"""
 		Initialize the parameters for the layer
 	
-	    Keyword arguments:
-	    rng -- the random number generator (for unspecified parameters)
-	    inputFunction -- function applied to the input. If this is the 
-	    first layer, it should be the identity. If this is layer i, should
-	    be the output of layer i-1
-	    n_in -- dim of input vector
-	    n_out -- dim of output vector
-	    W -- weight matrix
-	    b -- bias matrix
-	    activation -- activation function
-	    """
+		Keyword arguments:
+		rng -- the random number generator (for unspecified parameters)
+		inputFunction -- function applied to the input. If this is the 
+		first layer, it should be the identity. If this is layer i, should
+		be the output of layer i-1
+		n_in -- dim of input vector
+		n_out -- dim of output vector
+		W -- weight matrix
+		b -- bias matrix
+		activation -- activation function
+		"""
 		self.inputFunction = inputFunction
 		if W is None:
 			W_values = np.asarray(rng.uniform(
@@ -49,12 +49,29 @@ class Layer(object):
 		self.params = [self.W, self.b]
 		
 	def run(self, inputVec):
+		"""
+		Compute this layer's output
+		
+		Keyword arguments:
+		inputVec -- vector with the input values
+		"""
 		lin_output = T.dot(self.inputFunction(inputVec), self.W) + self.b
 		return (lin_output if self.activation is None
 					   else self.activation(lin_output))
 		
 class Network(object):
 	def __init__(self, rng, structure, inputSize):
+		"""
+		Initialize the network by constructing the needed layer objects
+		and connecting their outputs and inputs.
+		Construct the expressions representative of the parameters and
+		regularization costs needed for the optimization
+	
+		Keyword arguments:
+		rng -- the random number generator (for unspecified parameters)
+		structure -- list with number of outputs for each layer
+		inputSize -- dimension of input for first layer
+		"""
 		self.layers = []
 		
 		for i,_ in enumerate(structure):
@@ -74,9 +91,15 @@ class Network(object):
 			self.L2_sqr += (l.W ** 2).sum()
 		
 	def run(self, inputVec):
+		"""
+		Returns the output of the very last layer
+		
+		Keyword arguments:
+		inputVec -- vector with the input values
+		"""
 		return self.layers[-1].run(inputVec)
 	
-if __name__ == '__main__':
+def testSingleSample():
 	rng = np.random.RandomState(1234)
 	x = T.fvector('x')
 	x0 = theano.shared(np.ones(5, dtype='float32'))
@@ -85,3 +108,15 @@ if __name__ == '__main__':
 	print f()
 	x0.set_value(np.array([1,2,3,4,5], dtype='float32'))
 	print f()
+	
+def testMultiSample():
+	rng = np.random.RandomState(1234)
+	x = T.fmatrix('x')
+	x0 = theano.shared(np.tile(np.ones(5, dtype='float32'),(100,1)))
+	n = Network(rng, [8,2], 5)
+	f = theano.function([], n.run(x), givens={x:x0})
+	print f()
+
+if __name__ == '__main__':
+	testMultiSample()
+	
