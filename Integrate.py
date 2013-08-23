@@ -43,7 +43,18 @@ class ODESolver(object):
 		return T.cast(c + dt*(k1 + 2*k2 + 2*k3 + k4)/6, "float32")
 
 class Integrate(object):
-	def __init__(self, inputs, outputs, c0, odeSolver, dt=0.01):
+	def __init__(self, odeSolver, dt=0.01):
+		"""
+		Stores the important parameters
+		
+		Keyword arguments:
+		odeSolver -- method which performs the integration at each time step
+		dt -- time step for integration
+		"""
+		self.odeSolver = odeSolver
+		self.dt = dt
+		
+	def buildModel(self, inputs, outputs, c0):
 		"""
 		Builds the expression containing the integration loop; and
 		the expression comparing the result of the integration loop
@@ -54,15 +65,14 @@ class Integrate(object):
 		outputs -- a sequence with the desired output for the network
 					(one measurement per dimensionless time unit)
 		c0 -- initial system state
-		odeSolver -- method which performs the integration at each time step
 		"""
-		stepsPerUnit = T.cast(1/dt,'int32')
+		stepsPerUnit = T.cast(1/self.dt,'int32')
 		numUnits = outputs.shape[0]
 		total_steps = T.cast(numUnits*stepsPerUnit, 'int32')
-		(self.cout, self.updates) = theano.scan(fn = odeSolver,
+		(self.cout, self.updates) = theano.scan(fn = self.odeSolver,
 									outputs_info = [c0],
 									sequences = [inputs],
-									non_sequences = [dt],
+									non_sequences = [self.dt],
 									n_steps = total_steps)
 		
 		"""Sim results only for each time unit"""
@@ -79,7 +89,8 @@ def constantInputTest():
 	iSeq = theano.shared(rng.rand(300,5))
 	oSeq = theano.shared(np.array([[1,1],[0.2,0.3],[0.4,0.4]], dtype='float32'))
 	c0 = theano.shared(np.array([0.1,0.1], dtype='float32'))
-	integ = Integrate(iSeq, oSeq, c0, o.eulerStep)
+	integ = Integrate(o.eulerStep)
+	integ.buildModel(iSeq, oSeq, c0)
 	#f = theano.function([], integ.cout, updates=integ.updates)
 	#print "Running scan:", f()
 	g = theano.function([], integ.score, updates=integ.updates)
@@ -96,7 +107,8 @@ def variableInputTest():
 	iSeq = theano.shared(rng.rand(300,3))
 	oSeq = theano.shared(np.array([[1,1],[0.2,0.3],[0.4,0.4]], dtype='float32'))
 	c0 = theano.shared(np.array([0.1,0.1], dtype='float32'))
-	integ = Integrate(iSeq, oSeq, c0, o.combinedEulerStep)
+	integ = Integrate(o.combinedEulerStep)
+	integ.buildModel(iSeq, oSeq, c0)
 	#f = theano.function([], integ.cout, updates=integ.updates)
 	#print "Running scan:", f()
 	g = theano.function([], integ.score, updates=integ.updates)
@@ -118,7 +130,8 @@ def symbolicTest():
 	inputSequence = T.fmatrix("is")
 	outputSequence = T.fmatrix("os")
 	initialState = T.fvector("c_i")
-	integ = Integrate(inputSequence, outputSequence, initialState, o.eulerStep)
+	integ = Integrate(o.eulerStep)
+	integ.buildModel(inputSequence, outputSequence, initialState)
 	#f = theano.function([], integ.cout, updates=integ.updates)
 	#print "Running scan:", f()
 	g = theano.function([], integ.score, updates=integ.updates,
@@ -128,4 +141,4 @@ def symbolicTest():
 	print "Difference:", g()
 
 if __name__ == '__main__':
-	symbolicTest()
+	constantInputTest()

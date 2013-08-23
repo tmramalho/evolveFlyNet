@@ -24,6 +24,8 @@ class DataProcessor(object):
 		If we have a copy of the data array in numpy format, load that file
 		Else create the data array from files
 		'''
+		self.genes = ['bcd', 'cad', 'tll', 'gt', 'hb', 'kni', 'kr', 'eve']
+		
 		if force:
 			self.createDataFile(folder)
 		else:
@@ -31,6 +33,7 @@ class DataProcessor(object):
 				self.coreData = np.load(folder+"data/npData.npy", None)
 			except IOError:
 				self.createDataFile(folder)
+		self.normalizeCoreData()
 			
 	def createDataFile(self, folder):
 		'''
@@ -39,11 +42,10 @@ class DataProcessor(object):
 		'''
 		print "Reading data from experiment files..."
 		self.pattern = re.compile('([-\d\.]+?) +?([-\d\.]+?) +?([-\d\.]+?) +?([-\d\.]+?)\n')
-		genes = ['bcd', 'cad', 'tll', 'gt', 'hb', 'kni', 'kr', 'eve']
 		data = []
 		for i in range(1, 9):
 			tData = []
-			for g in genes:
+			for g in self.genes:
 				wtData = self.consumeFile(folder+'data/wt/wtg_'+g+'_t'+str(i)+'.100')
 				dtData = self.consumeFile(folder+'data/dmtll/dmtllg_'+g+'_t'+str(i)+'.100')
 				tData.append([wtData, dtData])
@@ -68,6 +70,22 @@ class DataProcessor(object):
 				return data
 		except IOError:
 			return np.zeros((100,3))
+		
+	def normalizeCoreData(self):
+		'''
+		Create an array with only the normalized average values of the measurements.
+		The normalization is done per gene. The array norm data has four dimensions, 
+		organized in the following way:
+	
+		0 -- Temporal class [1-8]
+		1 -- Measured gene ['bcd', 'cad', 'tll', 'gt', 'hb', 'kni', 'kr', 'eve']
+		2 -- Experiment type [wt, dmtll]
+		3 -- AP axis position [0 - 99]
+		'''
+		self.normData = np.copy(self.coreData[:,:,:,:,1])
+		for i in xrange(self.normData.shape[1]):
+			mc = np.max(self.normData[:,i,:,:])
+			self.normData[:,i,:,:] /= mc
 	
 	def sequencesPerCell(self):
 		'''
@@ -81,4 +99,24 @@ class DataProcessor(object):
 		'''
 		tr = np.transpose(self.coreData, axes=(2, 3, 0, 1, 4))
 		res = tr[:,:,:,:,1].flatten().reshape((200,8,8))
+		return res
+	
+	def getGeneNames(self):
+		'''
+		Return a list with gene names ordered as in the data arrays
+		'''
+		return self.genes
+	
+	def normalizedSequencesPerCell(self):
+		'''
+		Return a rearranged data array, with less dimensions. Only normalized
+		average concentrations are selected, and the experiment type dimension
+		is flattened. The remaining dimensions are:
+		
+		0 -- AP axis position [0 - 99 (twice)]
+		1 -- Temporal class [1-8]
+		2 -- Measured gene ['bcd', 'cad', 'tll', 'gt', 'hb', 'kni', 'kr', 'eve']
+		'''
+		tr = np.transpose(self.normData, axes=(2, 3, 0, 1))
+		res = tr[:,:,:,:].flatten().reshape((200,8,8))
 		return res
