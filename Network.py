@@ -60,7 +60,7 @@ class Layer(object):
 					   else self.activation(lin_output))
 		
 class Network(object):
-	def __init__(self, rng, structure, inputSize):
+	def __init__(self, rng, structure, inputSize, activation = T.tanh):
 		"""
 		Initialize the network by constructing the needed layer objects
 		and connecting their outputs and inputs.
@@ -76,9 +76,9 @@ class Network(object):
 		
 		for i,_ in enumerate(structure):
 			if i == 0:
-				layer = Layer(rng, lambda x: x,          inputSize,      structure[i])
+				layer = Layer(rng, lambda x: x,          inputSize,      structure[i], activation = activation)
 			else:
-				layer = Layer(rng, self.layers[i-1].run, structure[i-1], structure[i])
+				layer = Layer(rng, self.layers[i-1].run, structure[i-1], structure[i], activation = activation)
 			self.layers.append(layer)
 		
 		self.params = []

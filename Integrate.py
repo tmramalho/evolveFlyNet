@@ -76,10 +76,10 @@ class Integrate(object):
 									n_steps = total_steps)
 		
 		"""Sim results only for each time unit"""
-		cUnits = self.cout[stepsPerUnit-1::stepsPerUnit]
+		self.cUnits = self.cout[stepsPerUnit-1::stepsPerUnit]
 		
 		"""Least square difference"""
-		dist = outputs - cUnits
+		dist = outputs - self.cUnits
 		self.score = (dist ** 2).sum()
 
 def constantInputTest():
@@ -91,8 +91,8 @@ def constantInputTest():
 	c0 = theano.shared(np.array([0.1,0.1], dtype='float32'))
 	integ = Integrate(o.eulerStep)
 	integ.buildModel(iSeq, oSeq, c0)
-	#f = theano.function([], integ.cout, updates=integ.updates)
-	#print "Running scan:", f()
+	f = theano.function([], integ.cout.shape, updates=integ.updates)
+	print "Running scan:", f()
 	g = theano.function([], integ.score, updates=integ.updates)
 	print "Difference:", g()
 	c0.set_value(np.array([0.6,0.6], dtype='float32'))
@@ -139,6 +139,30 @@ def symbolicTest():
 						outputSequence: oSeq,
 						initialState: c0})
 	print "Difference:", g()
+	
+def symbolicBatchTest():
+	rng = np.random.RandomState(1234)
+	n = net.Network(rng, [8,2], 5)
+	o = ODESolver(n)
+	iSeq = np.array(rng.rand(300,5), dtype='float32')
+	oSeq = np.array([[1,1],[0.2,0.3],[0.4,0.4]], dtype='float32')
+	c0 = np.array([0.1,0.1], dtype='float32')
+	iSamples = theano.shared(np.rollaxis(np.tile(iSeq, (50,1,1)), 0, 2))
+	oSamples = theano.shared(np.rollaxis(np.tile(oSeq, (50,1,1)), 0, 2))
+	ci = theano.shared(np.tile(c0, (50,1)))
+	print iSamples.shape.eval(), oSamples.shape.eval(), ci.shape.eval()
+	inputSequence = T.ftensor3("is")
+	outputSequence = T.ftensor3("os")
+	initialState = T.fmatrix("c_i")
+	integ = Integrate(o.eulerStep)
+	integ.buildModel(inputSequence, outputSequence, initialState)
+	#f = theano.function([], integ.cout, updates=integ.updates)
+	#print "Running scan:", f()
+	g = theano.function([], integ.score, updates=integ.updates,
+					givens={inputSequence: iSamples,
+						outputSequence: oSamples,
+						initialState: ci})
+	print "Difference:", g()
 
 if __name__ == '__main__':
-	constantInputTest()
+	symbolicBatchTest()

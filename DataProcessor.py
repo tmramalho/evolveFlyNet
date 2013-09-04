@@ -74,8 +74,8 @@ class DataProcessor(object):
 	def normalizeCoreData(self):
 		'''
 		Create an array with only the normalized average values of the measurements.
-		The normalization is done per gene. The array norm data has four dimensions, 
-		organized in the following way:
+		The normalization is done per gene per experiment. The array norm data has 
+		four dimensions, organized in the following way:
 	
 		0 -- Temporal class [1-8]
 		1 -- Measured gene ['bcd', 'cad', 'tll', 'gt', 'hb', 'kni', 'kr', 'eve']
@@ -83,9 +83,12 @@ class DataProcessor(object):
 		3 -- AP axis position [0 - 99]
 		'''
 		self.normData = np.copy(self.coreData[:,:,:,:,1])
+		self.normData = self.normData.clip(min = 0)
 		for i in xrange(self.normData.shape[1]):
-			mc = np.max(self.normData[:,i,:,:])
-			self.normData[:,i,:,:] /= mc
+			for j in xrange(self.normData.shape[2]):
+				mc = np.max(self.normData[:,i,j,:])
+				if(mc > 0):
+					self.normData[:,i,j,:] /= mc
 	
 	def sequencesPerCell(self):
 		'''

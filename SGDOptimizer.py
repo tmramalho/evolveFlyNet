@@ -16,7 +16,7 @@ class SGDOptimizer(object):
 	(batch size must be set to one for now due to network)
 	'''
 
-	def __init__(self, n, integ, inSamples, outSamples, c0, learning_rate = 0.1, seed = 1234, L1_reg = 0, L2_reg = 0):
+	def __init__(self, n, integ, inSamples, outSamples, c0, learning_rate = 0.1, L1_reg = 0, L2_reg = 0):
 		'''
 		Constructor
 		'''
@@ -41,6 +41,13 @@ class SGDOptimizer(object):
 		self.model = theano.function(inputs=[index],
 				outputs=cost,
 				updates=updates + integ.updates,
+				givens={
+					inputSequence: inSamples[index],
+					outputSequence: outSamples[index],
+					initialState: c0[index]})
+		
+		self.eval = theano.function(inputs=[index],
+				outputs=integ.cUnits,
 				givens={
 					inputSequence: inSamples[index],
 					outputSequence: outSamples[index],
