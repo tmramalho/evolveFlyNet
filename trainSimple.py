@@ -50,14 +50,16 @@ def interpolateSingleGene(data, totalSteps, plot=False):
 def plotResult(res, nog):
 	x = np.linspace(0,1,100)
 	n1 = res.shape[2]
-	n2 = res.shape[1]
+	n2 = res.shape[0]
 	for i in range(n1):
 		for j in range(n2):
-			plt.plot(x, res[:100,j,i])
+			plt.plot(x, res[j,:100,i], label="t"+str(j))
+		plt.legend()
 		plt.savefig("result_"+str(i)+".pdf")
 		plt.clf()
 		for j in range(n2):
-			plt.plot(x, res[100:,j,i])
+			plt.plot(x, res[j,100:,i], label="t"+str(j))
+		plt.legend()
 		plt.savefig("result_"+str(i)+"_dtll.pdf")
 		plt.clf()
 	
@@ -68,6 +70,8 @@ def loadData(folder):
 	nsp = data.normalizedSequencesPerCell()
 	'''Select last 5 genes as target values'''
 	oSamples = np.array(nsp[:,1:,3:], dtype='float32')
+	'''Bring array into shape (n_steps, n_samples, n_genes)'''
+	oSamples = np.rollaxis(oSamples, 0, 2)
 	'''Select first time point of last 5 genes as initial condition'''
 	c0Samples = np.array(nsp[:,0,3:], dtype='float32')
 	
@@ -81,7 +85,10 @@ def loadData(folder):
 		interpGenes.append(interpolateSingleGene(nsp[:,:,g], totalSteps))
 	
 	iSamples = np.array(interpGenes, dtype='float32')
+	
+	'''Bring array into shape (n_steps, n_samples, n_genes)'''
 	iSamples = np.rollaxis(iSamples, 0, 3).clip(min = 0)
+	iSamples = np.rollaxis(iSamples, 0, 2)
 	
 	np.save(folder+"data/simpleInputSequence.npy", iSamples)
 	np.save(folder+"data/simpleOutputSequence.npy", oSamples)
@@ -95,9 +102,9 @@ if __name__ == '__main__':
 	nInputGenes = 3
 	nTotalGenes = nInputGenes + nOutputGenes
 	rng = np.random.RandomState()
-	n = net.Network(rng, [10, nOutputGenes], nTotalGenes)
+	n = net.Network(rng, [10, 10, nOutputGenes], nTotalGenes)
 	o = ig.ODESolver(n)
-	integ = ig.Integrate(o.combinedEulerStep, dt)
+	integ = ig.Integrate(o.combinedRK4Step, dt)
 	folder = '/Users/tiago/Dropbox/workspace/evolveFlyNet/'
 	
 	try:
@@ -110,20 +117,21 @@ if __name__ == '__main__':
 	inputSeq = theano.shared(iSamples)
 	outputSeq = theano.shared(oSamples)
 	starting = theano.shared(c0Samples)
-	sgd = so.SGDOptimizer(n, integ, inputSeq, outputSeq, starting, learning_rate = 0.15)
+	bs = 20
+	sgd = so.SGDOptimizer(n, integ, inputSeq, outputSeq, starting, learning_rate = 0.1, batch_size = bs)
 	print "Dry run!"
-	for j in range(0,50):
+	for j in range(500):
 		av = 0
-		for index in range(0,200):
+		for index in range(0,200/bs):
 			score = sgd.model(index)
 			av += score
 			print j, index % 100, score
-		print "avScore", av/200
+		print "avScore", av/(200/bs)
 	print "whopper"
 	outputs = []
-	for index in range(0,200):
+	for index in range(0,202/bs):
 		op = sgd.eval(index)
 		outputs.append(op)
-	result = np.array(outputs)
+	result = np.concatenate(outputs,axis=1)
 	plotResult(result, nOutputGenes)
 		

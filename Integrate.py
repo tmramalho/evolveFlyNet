@@ -27,18 +27,18 @@ class ODESolver(object):
 		return T.cast(c + dt*fn, "float32")
 
 	def combinedEulerStep(self, inp, c, dt):
-		z = T.concatenate([inp, c])
+		z = T.concatenate([inp, c], axis=1)
 		fn = self.n.run(z)
 		return T.cast(c + dt*fn, "float32")
 	
 	def combinedRK4Step(self, inp, c, dt):
-		z1 = T.concatenate([inp, c])
+		z1 = T.concatenate([inp, c], axis=1)
 		k1 = self.n.run(z1)
-		z2 = T.concatenate([inp, c+dt*k1/2])
+		z2 = T.concatenate([inp, c+dt*k1/2], axis=1)
 		k2 = self.n.run(z2)
-		z3 = T.concatenate([inp, c+dt*k2/2])
+		z3 = T.concatenate([inp, c+dt*k2/2], axis=1)
 		k3 = self.n.run(z3)
-		z4 = T.concatenate([inp, c+dt*k3])
+		z4 = T.concatenate([inp, c+dt*k3], axis=1)
 		k4 = self.n.run(z4)
 		return T.cast(c + dt*(k1 + 2*k2 + 2*k3 + k4)/6, "float32")
 
@@ -81,6 +81,7 @@ class Integrate(object):
 		"""Least square difference"""
 		dist = outputs - self.cUnits
 		self.score = (dist ** 2).sum()
+		self.mean = T.mean(dist ** 2)
 
 def constantInputTest():
 	rng = np.random.RandomState(1234)
