@@ -6,6 +6,7 @@ Created on Aug 15, 2013
 
 import numpy as np
 import re
+from copy import deepcopy
 
 class DataProcessor(object):
 	'''
@@ -108,7 +109,7 @@ class DataProcessor(object):
 		'''
 		Return a list with gene names ordered as in the data arrays
 		'''
-		return self.genes
+		return deepcopy(self.genes)
 	
 	def normalizedSequencesPerCell(self):
 		'''

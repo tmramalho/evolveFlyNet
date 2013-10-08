@@ -1,3 +1,4 @@
+
 '''
 Created on Aug 23, 2013
 
@@ -55,25 +56,24 @@ def plotResult(res, nog):
 		for j in range(n2):
 			plt.plot(x, res[j,:100,i], label="t"+str(j))
 		plt.legend()
-		plt.savefig("result_"+str(i)+".pdf")
+		plt.savefig("plots/result_"+str(i)+".pdf")
 		plt.clf()
 		for j in range(n2):
 			plt.plot(x, res[j,100:,i], label="t"+str(j))
 		plt.legend()
-		plt.savefig("result_"+str(i)+"_dtll.pdf")
+		plt.savefig("plots/result_"+str(i)+"_dtll.pdf")
 		plt.clf()
-	
 	
 def loadData(folder):
 	data = dp.DataProcessor()
 	#plotData(data)
 	nsp = data.normalizedSequencesPerCell()
 	'''Select last 5 genes as target values'''
-	oSamples = np.array(nsp[:,1:,3:], dtype='float32')
+	oSamples = np.array(nsp[:,1:,3:7], dtype='float32')
 	'''Bring array into shape (n_steps, n_samples, n_genes)'''
 	oSamples = np.rollaxis(oSamples, 0, 2)
 	'''Select first time point of last 5 genes as initial condition'''
-	c0Samples = np.array(nsp[:,0,3:], dtype='float32')
+	c0Samples = np.array(nsp[:,0,3:7], dtype='float32')
 	
 	stepsPerUnit = 1/dt
 	numUnits = oSamples.shape[1]
@@ -97,14 +97,14 @@ def loadData(folder):
 	return iSamples, oSamples, c0Samples
 	
 if __name__ == '__main__':
-	dt = 0.01
-	nOutputGenes = 5
+	dt = 0.1
+	nOutputGenes = 4
 	nInputGenes = 3
 	nTotalGenes = nInputGenes + nOutputGenes
 	rng = np.random.RandomState()
-	n = net.Network(rng, [10, 10, nOutputGenes], nTotalGenes)
+	n = net.Network(rng, [10, nOutputGenes], nTotalGenes)
 	o = ig.ODESolver(n)
-	integ = ig.Integrate(o.combinedRK4Step, dt)
+	integ = ig.Integrate(o.combinedEulerStep, dt)
 	folder = '/Users/tiago/Dropbox/workspace/evolveFlyNet/'
 	
 	try:
@@ -125,7 +125,7 @@ if __name__ == '__main__':
 		for index in range(0,200/bs):
 			score = sgd.model(index)
 			av += score
-			print j, index % 100, score
+			#print j, index % 100, score
 		print "avScore", av/(200/bs)
 	print "whopper"
 	outputs = []

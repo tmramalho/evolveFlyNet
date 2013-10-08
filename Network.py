@@ -43,11 +43,11 @@ class Layer(object):
 
 		self.W = W
 		self.b = b
+		self.rng = rng
+		self.n_in = n_in
+		self.n_out = n_out
 		self.activation = activation
-
-		# parameters of the model
-		self.params = [self.W, self.b]
-		
+			
 	def run(self, inputVec):
 		"""
 		Compute this layer's output
@@ -58,6 +58,19 @@ class Layer(object):
 		lin_output = T.dot(self.inputFunction(inputVec), self.W) + self.b
 		return (lin_output if self.activation is None
 					   else self.activation(lin_output))
+	
+	def reset(self):
+		W_values = np.asarray(self.rng.uniform(
+				low=-np.sqrt(6. / (self.n_in + self.n_out)),
+				high=np.sqrt(6. / (self.n_in + self.n_out)),
+				size=(self.n_in, self.n_out)), dtype=theano.config.floatX)
+		if self.activation == theano.tensor.nnet.sigmoid:
+			W_values *= 4
+
+		self.W.set_value(W_values)
+
+		b_values = np.zeros((self.n_out,), dtype=theano.config.floatX)
+		self.b.set_value(b_values)
 		
 class Network(object):
 	def __init__(self, rng, structure, inputSize, activation = T.tanh):
@@ -81,12 +94,16 @@ class Network(object):
 				layer = Layer(rng, self.layers[i-1].run, structure[i-1], structure[i], activation = activation)
 			self.layers.append(layer)
 		
-		self.params = []
 		self.L1 = 0
 		self.L2_sqr = 0
+		self.structure = structure
+		self.structure.insert(0, inputSize)
+		self.createParameterList()
 		
+	def createParameterList(self):
+		self.params = []
 		for l in self.layers:
-			self.params += l.params
+			self.params += [l.W, l.b]
 			self.L1 += abs(l.W).sum()
 			self.L2_sqr += (l.W ** 2).sum()
 		
@@ -98,6 +115,10 @@ class Network(object):
 		inputVec -- vector with the input values
 		"""
 		return self.layers[-1].run(inputVec)
+	
+	def reset(self):
+		for l in self.layers:
+			l.reset()
 	
 def testSingleSample():
 	rng = np.random.RandomState(1234)
