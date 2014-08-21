@@ -89,9 +89,14 @@ class Network(object):
 		
 		for i,_ in enumerate(structure):
 			if i == 0:
-				layer = Layer(rng, lambda x: x,          inputSize,      structure[i], activation = activation)
+				layer = Layer(rng, lambda x: x,          inputSize,
+							structure[i], activation = activation)
+			elif i != len(structure)-1:
+				layer = Layer(rng, self.layers[i-1].run, structure[i-1],
+							structure[i], activation = activation)
 			else:
-				layer = Layer(rng, self.layers[i-1].run, structure[i-1], structure[i], activation = activation)
+				layer = Layer(rng, self.layers[i-1].run, structure[i-1],
+							structure[i], activation = None)
 			self.layers.append(layer)
 		
 		self.L1 = 0

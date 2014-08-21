@@ -72,7 +72,7 @@ class SimpleNet(object):
 		
 		gparams = []
 		for param in self.n.params:
-			gparam = T.grad(cost, param)
+			gparam = T.grad(regCost, param)
 			gparams.append(gparam)
 	
 		updates = []
@@ -106,6 +106,12 @@ class SimpleNet(object):
 					givens={
 						x: input_set,
 						y: target_set})
+
+		self.evalRegCost = theano.function(inputs=[],
+					outputs=regCost,
+					givens={
+						x: input_set,
+						y: target_set})
 		
 		self.evalNet = theano.function(inputs=[],
 					outputs=self.n.run(x),
@@ -117,6 +123,14 @@ class SimpleNet(object):
 					updates=grup,
 					givens={
 						xv: input_set[index]})
+		
+		self.evalValue = theano.function(inputs=[xv],
+										outputs = self.n.run(xv),
+										allow_input_downcast=True)
+
+		self.evalValueSet = theano.function(inputs=[x],
+										outputs = self.n.run(x),
+										allow_input_downcast=True)
 		
 	def train(self, nEpochs, nSamples, verbose = False):
 		print "Training model with gradient descent..."
@@ -131,6 +145,23 @@ class SimpleNet(object):
 					c = self.trainNet(j)
 		print "Finished training with av. error of", np.sqrt(self.evalCost())
 	
+	def trainDiagnostic(self, nEpochs, nSamples, prefix='net'):
+		print "Training model with gradient descent..."
+		reg_c = []
+		true_c = []
+		for i in xrange(nEpochs):
+			for j in xrange(nSamples/self.batch_size):
+				c = self.trainNet(j)
+			reg_c.append(self.evalRegCost())
+			true_c.append(self.evalCost())
+		print "Finished training with av. error of", np.sqrt(self.evalCost())
+		td = np.array(reg_c)
+		plt.plot(td)
+		tt = np.array(true_c)
+		plt.plot(tt)
+		plt.savefig("plots/{0}/score.pdf".format(prefix))
+		plt.clf()
+	
 	def jitterTrain(self, nEpochs, nSamples, sigma):
 		print "Training jittered model with gradient descent..."
 		inputValues = self.input_set.get_value()
@@ -141,6 +172,23 @@ class SimpleNet(object):
 				self.trainNet(j)
 		print "Finished training with av. error of", np.sqrt(self.evalCost())
 		self.input_set.set_value(inputValues)
+		
+	def visualizeWeights(self, prefix="net"):
+		cm = plt.get_cmap("RdBu")
+		for i, param in enumerate(self.n.params):
+			pValues = param.get_value()
+			if len(pValues.shape) == 1: #vector
+				label_hist = pValues.reshape((pValues.shape[0],1))
+			else:
+				label_hist = pValues
+			p_max = np.abs(np.max(pValues))
+			p_min = np.abs(np.min(pValues))
+			p_ceil = p_max if p_max > p_min else p_min
+			plt.imshow(label_hist.T, interpolation='nearest', cmap = cm, vmin = -p_ceil, vmax = p_ceil)
+			plt.colorbar()
+			plt.title(str(pValues.shape))
+			plt.savefig("plots/{2}/weights{0:02d}_p{1:02d}.pdf".format(i/2, i, prefix))
+			plt.clf()
 		
 	def saveState(self, fname):
 		data = []
