@@ -82,7 +82,7 @@ if __name__ == '__main__':
 					type=str, default='gt', choices=['gt', 'hb', 'kni', 'kr', 'eve'],
 					help="target gene")
 	parser.add_argument('--f', dest='folder',
-					type=str, default='/Users/tiago/Dropbox/workspace/evolveFlyNet/',
+					type=str, default='',
 					help="folder")
 	
 	args = parser.parse_args()

@@ -4,17 +4,11 @@ Created on Sep 7, 2013
 @author: tiago
 '''
 
-import DataProcessor as dp
-import SGDOptimizer as so
 import Network as net
-import Integrate as ig
 import theano
 import theano.sandbox.rng_mrg
 import theano.tensor as T
 import numpy as np
-import scipy.interpolate as ip
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 import cPickle
 import random
 import time
